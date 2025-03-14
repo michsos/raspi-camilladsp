@@ -1,0 +1,23 @@
+---
+- name: Configure Raspberry Pi with CamillaDSP
+  hosts: raspi
+  become: yes
+  
+  roles:
+    - role: overlay
+      tags: [overlay]
+    
+    - role: camilladsp
+      tags: [camilladsp]
+    
+    - role: config
+      tags: [config]
+    
+    - role: volume
+      tags: [volume]
+    
+    - role: services
+      tags: [services]
+    
+    - role: readonly
+      tags: [readonly]
