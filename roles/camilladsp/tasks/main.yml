@@ -1,0 +1,151 @@
+---
+# Install required packages
+- name: Install required packages
+  apt:
+    name:
+      - unar
+      - python3
+      - python3-venv
+      - screen
+    state: present
+  become: yes
+
+# Create installation directory
+- name: Create installation directory
+  file:
+    path: "/home/{{ camilladsp_user }}/camilladsp"
+    state: directory
+    mode: '0755'
+    owner: "{{ camilladsp_user }}"
+    group: "{{ camilladsp_group }}"
+  become: yes
+
+# Download CamillaDSP setup script
+- name: Download CamillaDSP setup script
+  get_url:
+    url: "https://github.com/HEnquist/camilladsp-setupscripts/releases/download/v{{ camilladsp_version }}/full_install_venv.sh"
+    dest: "/tmp/full_install_venv.sh"
+    mode: '0755'
+    force: yes
+  become: yes
+
+# Execute CamillaDSP setup script
+- name: Execute CamillaDSP setup script
+  shell: >
+    cd /tmp &&
+    INSTALL_ROOT="/home/{{ camilladsp_user }}/camilladsp" ./full_install_venv.sh
+  args:
+    executable: /bin/bash
+  become: yes
+  become_user: "{{ camilladsp_user }}"
+  register: setup_result
+  changed_when: setup_result.rc == 0
+  failed_when: setup_result.rc != 0
+
+# Display setup result
+- name: Display setup result
+  debug:
+    var: setup_result.stdout_lines
+
+# Create empty statefile if it doesn't exist
+- name: Create empty statefile if it doesn't exist
+  file:
+    path: "/home/{{ camilladsp_user }}/camilladsp/statefile.yml"
+    state: touch
+    mode: '0644'
+    owner: "{{ camilladsp_user }}"
+    group: "{{ camilladsp_group }}"
+  become: yes
+  changed_when: false
+
+# Run CamillaDSP directly and get PID
+- name: Start CamillaDSP in background and get PID
+  shell: >
+    /home/{{ camilladsp_user }}/camilladsp/bin/camilladsp -p1234 -w -s /home/{{ camilladsp_user }}/camilladsp/statefile.yml 2>&1 & echo $!
+  args:
+    executable: /bin/bash
+  become: yes
+  become_user: "{{ camilladsp_user }}"
+  register: camilladsp_pid
+
+# Run CamillaGUI directly and get PID
+- name: Start CamillaGUI in background and get PID
+  shell: >
+    cd /home/{{ camilladsp_user }}/camilladsp &&
+    nohup camillagui_venv/bin/python gui/main.py 2>&1 & echo $!
+  args:
+    executable: /bin/bash
+  become: yes
+  become_user: "{{ camilladsp_user }}"
+  register: camillagui_pid
+
+# Wait for services to start
+- name: Wait for services to start
+  pause:
+    seconds: 5
+
+# Check if processes are running
+- name: Check if CamillaDSP is running
+  shell: "ps -p {{ camilladsp_pid.stdout }} -o comm= || echo 'Not running'"
+  register: camilladsp_status
+  changed_when: false
+  ignore_errors: yes
+
+- name: Check if CamillaGUI is running
+  shell: "ps -p {{ camillagui_pid.stdout }} -o comm= || echo 'Not running'"
+  register: camillagui_status
+  changed_when: false
+  ignore_errors: yes
+
+# Display process status
+- name: Display process status
+  debug:
+    msg:
+      - "CamillaDSP PID: {{ camilladsp_pid.stdout }}, Status: {{ camilladsp_status.stdout }}"
+      - "CamillaGUI PID: {{ camillagui_pid.stdout }}, Status: {{ camillagui_status.stdout }}"
+
+# Display GUI access information
+- name: Display GUI access information
+  debug:
+    msg:
+      - "CamillaDSP and GUI are now running!"
+      - "CamillaDSP is running on port 1234 with statefile: /home/{{ camilladsp_user }}/camilladsp/statefile.yml"
+      - "Access the GUI at: http://localhost:5005 or http://{{ ansible_hostname }}:5005"
+      - "Please check if the GUI is accessible in your browser."
+
+# Wait for user confirmation
+- name: Wait for user confirmation
+  pause:
+    prompt: "Please check if the CamillaDSP GUI is accessible in your browser. Press Enter to continue and stop the services."
+
+# Stop CamillaGUI using PID
+- name: Stop CamillaGUI using PID
+  shell: "kill -KILL {{ camillagui_pid.stdout }} || true"
+  args:
+    executable: /bin/bash
+  become: yes
+  become_user: "{{ camilladsp_user }}"
+  ignore_errors: yes
+
+# Stop CamillaDSP using PID
+- name: Stop CamillaDSP using PID
+  shell: "kill -KILL {{ camilladsp_pid.stdout }} || true"
+  args:
+    executable: /bin/bash
+  become: yes
+  become_user: "{{ camilladsp_user }}"
+  ignore_errors: yes
+
+# Verify processes are stopped
+- name: Verify processes are stopped
+  shell: "ps -p {{ camilladsp_pid.stdout }},{{ camillagui_pid.stdout }} || echo 'All processes stopped'"
+  register: stop_verification
+  changed_when: false
+  ignore_errors: yes
+
+# Confirm services stopped
+- name: Confirm services stopped
+  debug:
+    msg:
+      - "CamillaDSP and GUI have been stopped. Installation complete."
+      - "Stop verification: {{ stop_verification.stdout }}"
