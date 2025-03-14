@@ -1,0 +1,11 @@
+---
+# Default variables for soundtest role
+
+# Test parameters
+soundtest_test_duration: 3              # Duration in seconds for each test tone
+soundtest_volume_level: 10              # Volume level for test tones (0-100) - kept very low
+soundtest_quiet_test: true              # Use quiet test tones to avoid startling users
+
+# Dropout test
+soundtest_dropout_test_duration: 30     # Duration in seconds for dropout test
+soundtest_dropout_test_enabled: false   # Disabled by default as it takes longer

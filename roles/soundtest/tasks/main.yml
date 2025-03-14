@@ -1,0 +1,191 @@
+---
+# Tasks for soundtest role
+
+# Ensure required packages are installed
+- name: Ensure alsa-utils is installed
+  apt:
+    name: alsa-utils
+    state: present
+    update_cache: true
+  become: true
+
+# Detect available sound cards
+- name: Get list of playback devices
+  shell: aplay -l
+  register: playback_devices
+  changed_when: false
+
+- name: Display available playback devices
+  debug:
+    var: playback_devices.stdout_lines
+    verbosity: 0
+
+# Ask user to select a sound card
+- name: Ask user to select sound card
+  pause:
+    prompt: |
+      Above is a list of available playback devices.
+      Please enter the card number you want to test (e.g., 0, 1, 2):
+  register: selected_card_number
+  when: playback_devices.stdout_lines | length > 0
+
+- name: Set selected card number
+  set_fact:
+    card_number: "{{ selected_card_number.user_input | default('0') }}"
+  when: playback_devices.stdout_lines | length > 0
+
+# Get card information
+- name: Get card information using aplay -l
+  shell: aplay -l | grep "card {{ card_number }}"
+  register: card_info
+  changed_when: false
+  failed_when: false
+  when: not ansible_check_mode
+
+# Extract card name from aplay -l output
+- name: Extract card name
+  set_fact:
+    card_name: "{{ card_info.stdout | regex_search('card [0-9]+: ([^\\[]+)', '\\1') | first | trim }}"
+  when: not ansible_check_mode and card_info is defined and card_info.stdout != ""
+
+# Get detailed hardware parameters
+- name: Get detailed hardware parameters
+  shell: aplay -D hw:CARD={{ card_name }},DEV=0 --dump-hw-params /dev/zero
+  register: card_hw_params
+  changed_when: false
+  failed_when: false
+  when: not ansible_check_mode and card_name is defined
+
+- name: Display card hardware parameters
+  debug:
+    msg: "{{ card_hw_params.stderr }}"
+    verbosity: 0
+  when: not ansible_check_mode and card_hw_params is defined and card_hw_params.stderr != ""
+
+# Parse supported formats, rates, and channels
+- name: Extract supported formats
+  set_fact:
+    supported_formats: "{{ card_hw_params.stderr | regex_findall('FORMAT:\\s+([^\\s]+)') }}"
+  when: not ansible_check_mode and card_hw_params is defined and card_hw_params.stderr != ""
+
+# No need for bit depth mapping, we'll use the exact format name
+
+- name: Set common sample rates
+  set_fact:
+    common_rates: ["44100", "48000", "96000"]
+  when: not ansible_check_mode
+
+- name: Extract supported channels
+  set_fact:
+    supported_channels: "{{ card_hw_params.stderr | regex_findall('CHANNELS:\\s+([0-9]+)') | first | int }}"
+  when: not ansible_check_mode and card_hw_params is defined and card_hw_params.stderr != ""
+
+- name: Display sound card capabilities
+  debug:
+    msg: |
+      Sound Card: {{ card_name }}
+      Supported formats: {{ supported_formats | join(', ') }}
+      Supported sample rates: 44.1kHz, 48kHz, 96kHz
+      Channels: {{ supported_channels }}
+    verbosity: 0
+  when: not ansible_check_mode and supported_formats is defined and supported_channels is defined
+
+# Ask user to confirm if the selected sound card is correct
+- name: Ask user to confirm sound card selection
+  pause:
+    prompt: |
+      Is this the correct sound card? Press ENTER to continue or Ctrl+C to abort.
+  when: not ansible_check_mode and supported_formats is defined
+
+# Ask user to select format
+- name: Ask user to select format
+  pause:
+    prompt: |
+      Please select a format from the supported formats:
+      {% for format in supported_formats %}
+      {{ loop.index }}. {{ format }}
+      {% endfor %}
+      (Press ENTER for default: {{ supported_formats[0] }})
+  register: selected_format_option
+  when: not ansible_check_mode and supported_formats is defined and supported_formats | length > 0
+
+- name: Set selected format
+  set_fact:
+    selected_format: "{{ supported_formats[selected_format_option.user_input | int - 1] if selected_format_option.user_input is defined and selected_format_option.user_input | int > 0 and selected_format_option.user_input | int <= supported_formats | length else supported_formats[0] }}"
+  when: not ansible_check_mode and supported_formats is defined and supported_formats | length > 0
+
+# Ask user to select preferred sample rate
+- name: Ask user to select preferred sample rate
+  pause:
+    prompt: |
+      Please select a sample rate:
+      1. 44.1kHz
+      2. 48kHz
+      3. 96kHz
+      (Press ENTER for default: 48kHz)
+  register: selected_rate_option
+  when: not ansible_check_mode
+
+- name: Set selected rate
+  set_fact:
+    rate: "{{ '44100' if selected_rate_option.user_input == '1' else '96000' if selected_rate_option.user_input == '3' else '48000' }}"
+  when: not ansible_check_mode
+
+# Run speaker test on each channel
+- name: Inform user about speaker test
+  debug:
+    msg: |
+      Starting speaker test with the following settings:
+      - Format: {{ selected_format }}
+      - Sample rate: {{ rate | int / 1000 }}kHz
+      - Channels: {{ supported_channels }}
+      - Duration per channel: {{ soundtest_test_duration }} seconds
+      
+      You will be asked to identify which speaker is playing for each channel.
+      Please listen carefully and select the corresponding option.
+    verbosity: 0
+  when: not ansible_check_mode and supported_formats is defined and rate is defined and supported_channels is defined
+
+# Volume is now controlled directly in the speaker-test command with -M parameter
+
+# Define channel names for up to 8 surround channels
+- name: Define channel names
+  set_fact:
+    channel_names:
+      1: "Left (L)"
+      2: "Right (R)"
+      3: "Center (C)"
+      4: "LFE / Subwoofer"
+      5: "Surround Left (SL)"
+      6: "Surround Right (SR)"
+      7: "Surround Back Left (SBL)"
+      8: "Surround Back Right (SBR)"
+  when: not ansible_check_mode
+
+# Initialize channel mapping dictionary
+- name: Initialize channel mapping
+  set_fact:
+    channel_mapping: {}
+  when: not ansible_check_mode
+
+# Test each channel individually and ask for user feedback
+
+# Test each channel one by one
+- name: Test each channel one by one
+  include_tasks: test_single_channel.yml
+  with_sequence: start=1 end={{ supported_channels | int }}
+  loop_control:
+    loop_var: channel_number
+  when: not ansible_check_mode and supported_formats is defined and rate is defined and supported_channels is defined
+
+- name: Display channel mapping results
+  debug:
+    msg: "Channel mapping results:\n{% for channel_num, heard in channel_mapping.items() %}\nChannel {{ channel_num }} (Hardware) → {% if heard == '0' %}Not heard / No sound{% else %}{{ channel_names[heard | int] | default('Other channel') }}{% endif %}{% endfor %}"
+    verbosity: 0
+  when: not ansible_check_mode and channel_mapping is defined
+
+- name: Display completion message
+  debug:
+    msg: "Sound card testing completed."
+    verbosity: 0
+  when: not ansible_check_mode

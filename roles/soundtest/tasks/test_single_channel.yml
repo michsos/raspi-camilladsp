@@ -1,0 +1,45 @@
+---
+# Test a single channel and ask for user feedback
+
+- name: Display testing channel message
+  debug:
+    msg: "Testing channel {{ channel_number }} of {{ supported_channels }}: {{ channel_names[channel_number | int] | default('Channel ' + channel_number) }}"
+    verbosity: 0
+
+- name: Run speaker test for channel
+  shell: >
+    echo "Testing channel {{ channel_number }} of {{ supported_channels }}: {{ channel_names[channel_number | int] | default('Channel ' + channel_number) }}" &&
+    speaker-test -D hw:CARD={{ card_name }},DEV=0
+    -c {{ supported_channels }}
+    -r {{ rate }}
+    -F {{ selected_format }}
+    -t sine
+    -f 440
+    -l 1
+    -s {{ channel_number }}
+    -d {{ soundtest_test_duration }}
+    -S 10
+  changed_when: false
+  failed_when: false
+
+- name: Ask user which channel was heard
+  pause:
+    prompt: |
+      Which channel did you hear for channel {{ channel_number }}?
+      1. Left (L)
+      2. Right (R)
+      3. Center (C)
+      4. LFE / Subwoofer
+      5. Surround Left (SL)
+      6. Surround Right (SR)
+      7. Surround Back Left (SBL)
+      8. Surround Back Right (SBR)
+      9. Other
+      0. Not heard / No sound
+      
+      Enter the number:
+  register: heard_channel
+
+- name: Record channel mapping
+  set_fact:
+    channel_mapping: "{{ channel_mapping | combine({channel_number: heard_channel.user_input}) }}"

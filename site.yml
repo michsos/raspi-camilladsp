@@ -7,6 +7,9 @@
     - role: overlay
       tags: [overlay]
     
+    - role: soundtest
+      tags: [soundtest]
+    
     - role: camilladsp
       tags: [camilladsp]
     
