@@ -3,5 +3,8 @@
   hosts: raspi
   become: yes
   
+  vars:
+    test_audio_channels: false  # Default to false, can be overridden with --extra-vars
+  
   roles:
     - role: overlay

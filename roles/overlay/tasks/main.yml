@@ -104,3 +104,8 @@
   debug:
     var: audio_params.stdout_lines
   when: audio_device_check.rc == 0
+
+# Include channel testing tasks (optional)
+- name: Include channel testing tasks
+  include_tasks: test_channels.yml
+  when: audio_device_check.rc == 0

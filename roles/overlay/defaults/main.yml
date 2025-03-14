@@ -4,3 +4,6 @@
 # Paths
 overlay_dir: /boot/firmware/overlays
 config_file: /boot/firmware/config.txt
+
+# Testing options
+test_audio_channels: false  # Set to true to test all audio channels
