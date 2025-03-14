@@ -1,0 +1,17 @@
+# Ignore all WAV files in this directory
+*.wav
+
+# Ignore all MP3 files in this directory
+*.mp3
+
+# Ignore all FLAC files in this directory
+*.flac
+
+# Ignore all OGG files in this directory
+*.ogg
+
+# Ignore all AAC files in this directory
+*.aac
+
+# But don't ignore .gitkeep
+!.gitkeep
