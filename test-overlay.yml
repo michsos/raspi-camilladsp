@@ -3,5 +3,8 @@
   hosts: raspi
   become: yes
   
+  # Note: record_audio_channels is true by default in defaults/main.yml
+  # To disable audio recording: --extra-vars "record_audio_channels=false"
+  
   roles:
     - role: overlay

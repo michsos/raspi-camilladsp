@@ -1,0 +1,31 @@
+---
+- name: Record Audio Channels Only
+  hosts: raspi
+  become: yes
+  
+  # Include the overlay role's default variables
+  vars_files:
+    - roles/overlay/defaults/main.yml
+  
+  vars:
+    record_audio_channels: true  # Always enable recording in this playbook
+  
+  tasks:
+    - name: Check if audio device is recognized
+      shell: arecord -l | grep -q "GenericStereoAu"
+      register: audio_device_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Display audio device status
+      debug:
+        msg: "Audio device is {{ 'recognized' if audio_device_check.rc == 0 else 'NOT recognized' }}"
+    
+    - name: Fail if audio device is not recognized
+      fail:
+        msg: "Audio device is not recognized. Please run the overlay configuration first."
+      when: audio_device_check.rc != 0
+    
+    - name: Include audio recording tasks
+      include_tasks: roles/overlay/tasks/record_channels.yml
+      when: audio_device_check.rc == 0

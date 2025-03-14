@@ -32,6 +32,7 @@
     remote_src: yes
     mode: '0644'
   register: overlay_8chi2s_copied
+  when: not ansible_check_mode
 
 # Generic stereo audio codec overlay
 - name: Copy genericstereoaudiocodec.dts file
@@ -52,6 +53,7 @@
     remote_src: yes
     mode: '0644'
   register: overlay_generic_copied
+  when: not ansible_check_mode
 
 # Update config.txt
 - name: Enable I2S in config.txt
@@ -80,7 +82,12 @@
   reboot:
     msg: "Rebooting to apply overlay changes"
     reboot_timeout: 300
-  when: overlay_8chi2s_copied.changed or overlay_generic_copied.changed or i2s_enabled.changed or generic_overlay_added.changed or chi8_overlay_added.changed
+  when: (overlay_8chi2s_copied.changed | default(false) or
+         overlay_generic_copied.changed | default(false) or
+         i2s_enabled.changed or
+         generic_overlay_added.changed or
+         chi8_overlay_added.changed) and
+        not ansible_check_mode
 
 # Verify the device is recognized
 - name: Check if audio device is recognized
@@ -103,4 +110,9 @@
 - name: Display audio device parameters
   debug:
     var: audio_params.stdout_lines
+  when: audio_device_check.rc == 0
+
+# Include audio recording tasks
+- name: Include audio recording tasks
+  include_tasks: record_channels.yml
   when: audio_device_check.rc == 0
