@@ -1,0 +1,19 @@
+//Device tree overlay for 8ch RP1
+/dts-v1/;
+/plugin/;
+
+/ {
+    fragment@0 {
+        target = <&rp1_i2s0_18_21>;
+        __overlay__ {
+            pins = "gpio18", "gpio19", "gpio20", "gpio22", "gpio24", "gpio26", "gpio21", "gpio23", "gpio25",  "gpio27";
+        };
+    };
+
+    fragment@1 {
+        target = <&rp1_i2s1_18_21>;
+        __overlay__ {
+            pins = "gpio18", "gpio19", "gpio20", "gpio22", "gpio24", "gpio26", "gpio21", "gpio23", "gpio25",  "gpio27";
+        };
+    };
+};

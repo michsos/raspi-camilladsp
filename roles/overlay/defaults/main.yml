@@ -1,0 +1,6 @@
+---
+# Default variables for overlay role
+
+# Paths
+overlay_dir: /boot/firmware/overlays
+config_file: /boot/firmware/config.txt

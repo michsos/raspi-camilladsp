@@ -1,0 +1,106 @@
+---
+# Tasks for overlay role
+
+- name: Ensure device-tree-compiler is installed
+  apt:
+    name: device-tree-compiler
+    state: present
+    update_cache: yes
+
+- name: Create overlays directory if it doesn't exist
+  file:
+    path: "{{ overlay_dir }}"
+    state: directory
+    mode: '0755'
+
+# 8chi2s overlay
+- name: Copy 8chi2s.dts file
+  copy:
+    src: 8chi2s.dts
+    dest: /tmp/8chi2s.dts
+    mode: '0644'
+
+- name: Compile 8chi2s.dts to dtbo
+  shell: dtc -@ -H epapr -O dtb -o /tmp/8chi2s.dtbo -Wno-unit_address_vs_reg /tmp/8chi2s.dts
+  args:
+    creates: /tmp/8chi2s.dtbo
+
+- name: Copy compiled 8chi2s.dtbo to overlays directory
+  copy:
+    src: /tmp/8chi2s.dtbo
+    dest: "{{ overlay_dir }}/8chi2s.dtbo"
+    remote_src: yes
+    mode: '0644'
+  register: overlay_8chi2s_copied
+
+# Generic stereo audio codec overlay
+- name: Copy genericstereoaudiocodec.dts file
+  copy:
+    src: genericstereoaudiocodec.dts
+    dest: /tmp/genericstereoaudiocodec.dts
+    mode: '0644'
+
+- name: Compile genericstereoaudiocodec.dts to dtbo
+  shell: dtc -@ -H epapr -O dtb -o /tmp/genericstereoaudiocodec.dtbo -Wno-unit_address_vs_reg /tmp/genericstereoaudiocodec.dts
+  args:
+    creates: /tmp/genericstereoaudiocodec.dtbo
+
+- name: Copy compiled genericstereoaudiocodec.dtbo to overlays directory
+  copy:
+    src: /tmp/genericstereoaudiocodec.dtbo
+    dest: "{{ overlay_dir }}/genericstereoaudiocodec.dtbo"
+    remote_src: yes
+    mode: '0644'
+  register: overlay_generic_copied
+
+# Update config.txt
+- name: Enable I2S in config.txt
+  lineinfile:
+    path: "{{ config_file }}"
+    line: "dtparam=i2s=on"
+    state: present
+  register: i2s_enabled
+
+- name: Add genericstereoaudiocodec overlay to config.txt
+  lineinfile:
+    path: "{{ config_file }}"
+    line: "dtoverlay=genericstereoaudiocodec"
+    state: present
+  register: generic_overlay_added
+
+- name: Add 8chi2s overlay to config.txt
+  lineinfile:
+    path: "{{ config_file }}"
+    line: "dtoverlay=8chi2s"
+    state: present
+  register: chi8_overlay_added
+
+# Reboot if any changes were made
+- name: Reboot if overlay changes were made
+  reboot:
+    msg: "Rebooting to apply overlay changes"
+    reboot_timeout: 300
+  when: overlay_8chi2s_copied.changed or overlay_generic_copied.changed or i2s_enabled.changed or generic_overlay_added.changed or chi8_overlay_added.changed
+
+# Verify the device is recognized
+- name: Check if audio device is recognized
+  shell: arecord -l | grep -q "GenericStereoAu"
+  register: audio_device_check
+  failed_when: false
+  changed_when: false
+
+- name: Display audio device status
+  debug:
+    msg: "Audio device is {{ 'recognized' if audio_device_check.rc == 0 else 'NOT recognized' }}"
+
+- name: Get detailed audio device parameters
+  shell: arecord -D hw:GenericStereoAu,1 --dump-hw-params /dev/zero
+  register: audio_params
+  failed_when: false
+  changed_when: false
+  when: audio_device_check.rc == 0
+
+- name: Display audio device parameters
+  debug:
+    var: audio_params.stdout_lines
+  when: audio_device_check.rc == 0
