@@ -1,13 +1,13 @@
 ---
-# Skip the entire role if not enabled
-- name: Check if config role is enabled
+# Skip the entire role if config_source_dir is not specified
+- name: Check if config_source_dir is specified
   meta: end_play
-  when: not config_enabled | bool
+  when: config_source_dir | length == 0
 
 # Validate required parameters
 - name: Validate source directory parameter
   fail:
-    msg: "config_source_dir must be specified when config_enabled is true. Use --extra-vars 'config_enabled=true config_source_dir=/path/to/your/configs'"
+    msg: "config_source_dir must be specified to use the config role. Use --extra-vars 'config_source_dir=/path/to/your/configs'"
   when: config_source_dir | length == 0
 
 # Check if source directory exists locally

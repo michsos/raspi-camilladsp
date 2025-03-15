@@ -1,17 +1,17 @@
-# Raspberry Pi CamillaDSP
+# Raspberry Pi CamillaDSP with Multichannel I2S
 
-This repository contains Ansible configuration and setup for running CamillaDSP on a Raspberry Pi with multi-channel audio support.
+This repository contains Ansible configuration and setup for running CamillaDSP on a Raspberry Pi with multichannel I2S input using an HDMI extractor, as described in [this AudioScienceReview forum thread](https://www.audiosciencereview.com/forum/index.php?threads/multichannel-audio-on-a-pi-will-get-a-whole-lot-easier-and-cheaper.48233/).
 
 ## Project Overview
 
 This project provides an automated way to configure a Raspberry Pi for high-quality audio processing using CamillaDSP. It handles:
 
-- Setting up I2S audio device tree overlays
+- Setting up I2S audio device tree overlays for multichannel audio via HDMI extractor
 - Installing and configuring CamillaDSP and its web GUI
 - Testing audio input via recording
 - Testing audio output via speaker tests
-- Configuring volume control
-- Optional read-only filesystem for stability
+- ~~Configuring volume control~~ (not currently supported)
+- ~~Optional read-only filesystem for stability~~ (not currently supported)
 
 ## Project Structure
 
@@ -22,8 +22,8 @@ The project is organized into Ansible roles, each handling a specific aspect of 
 - **overlay**: Configures device tree overlays for I2S audio
 - **camilladsp**: Installs and configures CamillaDSP and its services
 - **config**: Manages CamillaDSP configuration files
-- **volume**: Configures volume control
-- **readonly**: Sets up read-only filesystem (optional)
+- **volume**: ~~Configures volume control~~ (not currently supported)
+- **readonly**: ~~Sets up read-only filesystem~~ (not currently supported)
 
 ### Testing Roles
 
@@ -92,7 +92,7 @@ For a complete setup, follow these steps in order:
 
 5. **Copy configuration files** (optional):
    ```
-   ansible-playbook site.yml --tags config --extra-vars "config_enabled=true config_source_dir=/path/to/your/configs"
+   ansible-playbook site.yml --tags config --extra-vars "config_source_dir=/path/to/your/configs"
    ```
    
    This will copy configuration files from your local machine to the Raspberry Pi:
@@ -100,6 +100,8 @@ For a complete setup, follow these steps in order:
    - Files from `/path/to/your/configs/coeffs/*.yml` and `/path/to/your/configs/coeffs/*.wav` will be copied to CamillaDSP's coeffs directory
    
    Note: If either the `configs` or `coeffs` subdirectory doesn't exist in your source directory, it will be skipped.
+   
+   The config role will only run if you specify a `config_source_dir`. There's no need to set `config_enabled=true` separately.
 
 6. **Configure volume control** (optional):
    ```
@@ -121,6 +123,11 @@ For a complete setup, follow these steps in order:
 - **Run the complete setup without audio recording**:
   ```
   ansible-playbook site.yml --extra-vars "record_audio_channels=false"
+  ```
+
+- **Run the complete setup with config copy**:
+  ```
+  ansible-playbook site.yml --extra-vars "config_source_dir=/path/to/your/configs"
   ```
 
 ## Configuration Options
@@ -177,8 +184,8 @@ sudo journalctl -u camillagui
 
 - [x] Complete CamillaDSP installation role
 - [ ] Add configuration templates for different audio setups
-- [ ] Implement volume control integration
-- [ ] Add read-only filesystem support
+- [ ] ~~Implement volume control integration~~ (not currently supported)
+- [ ] ~~Add read-only filesystem support~~ (not currently supported)
 - [ ] Create backup/restore functionality
 - [x] Add web interface configuration
 - [ ] Implement automatic updates
@@ -208,6 +215,7 @@ If you encounter issues with CamillaDSP installation or the GUI:
 
 1. Check if Python and pip are installed correctly: `python3 --version && pip3 --version`
 2. Verify the installation directory exists and has correct permissions: `ls -la ~/camilladsp`
+   (Note: The actual installation directory is configured in `roles/camilladsp/defaults/main.yml`)
 3. Check if the virtual environment was created: `ls -la ~/camilladsp/camillagui_venv`
 4. Check the systemd service status: `sudo systemctl status camilladsp && sudo systemctl status camillagui`
 5. View the service logs: `sudo journalctl -u camilladsp -n 50 && sudo journalctl -u camillagui -n 50`
