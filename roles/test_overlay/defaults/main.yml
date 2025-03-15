@@ -1,6 +1,0 @@
----
-# Default variables for test_overlay role
-
-# Recording options
-recording_dir: /tmp/audio_recordings
-recording_duration: 5  # Duration in seconds (shorter since we're recording multiple files)

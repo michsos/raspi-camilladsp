@@ -30,6 +30,10 @@ The project is organized into Ansible roles, each handling a specific aspect of 
 - **test_overlay**: Tests audio input via recording
 - **test_speakers**: Tests audio output via speaker tests
 
+### Global Configuration
+
+All configuration variables are centralized in the `vars.yml` file at the project root for easier management.
+
 ## How to Use
 
 ### Prerequisites
@@ -101,7 +105,7 @@ For a complete setup, follow these steps in order:
    
    Note: If either the `configs` or `coeffs` subdirectory doesn't exist in your source directory, it will be skipped.
    
-   The config role will only run if you specify a `config_source_dir`. There's no need to set `config_enabled=true` separately.
+   The config role will only run if you specify a `config_source_dir`.
 
 6. **Configure volume control** (optional):
    ```
@@ -132,18 +136,12 @@ For a complete setup, follow these steps in order:
 
 ## Configuration Options
 
-You can customize the setup by modifying the variables in the role defaults files:
+You can customize the setup by modifying the variables in the `vars.yml` file at the project root. This file contains settings for:
 
-### Installation and Configuration
-- `roles/overlay/defaults/main.yml`: Device tree overlay settings
-- `roles/camilladsp/defaults/main.yml`: CamillaDSP installation and service settings
-- `roles/config/defaults/main.yml`: Configuration file copying settings
-- `roles/volume/defaults/main.yml`: Volume control settings
-- `roles/readonly/defaults/main.yml`: Read-only filesystem settings
-
-### Testing
-- `roles/test_overlay/defaults/main.yml`: Audio recording settings
-- `roles/test_speakers/defaults/main.yml`: Speaker test settings
+- User and system settings (user, group, installation directory - defaults to ~/camilladsp)
+- Hardware settings (overlay directory, config file path)
+- Testing settings (recording directory, durations, volume levels)
+- Config settings (source and destination directories)
 
 ### CamillaDSP GUI
 
@@ -215,7 +213,7 @@ If you encounter issues with CamillaDSP installation or the GUI:
 
 1. Check if Python and pip are installed correctly: `python3 --version && pip3 --version`
 2. Verify the installation directory exists and has correct permissions: `ls -la ~/camilladsp`
-   (Note: The actual installation directory is configured in `roles/camilladsp/defaults/main.yml`)
+   (Note: The default installation directory is ~/camilladsp, configured in vars.yml)
 3. Check if the virtual environment was created: `ls -la ~/camilladsp/camillagui_venv`
 4. Check the systemd service status: `sudo systemctl status camilladsp && sudo systemctl status camillagui`
 5. View the service logs: `sudo journalctl -u camilladsp -n 50 && sudo journalctl -u camillagui -n 50`

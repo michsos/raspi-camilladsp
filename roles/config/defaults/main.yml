@@ -1,7 +1,0 @@
----
-# Source directory for configuration files on the local machine
-# This must be specified by the user to enable the role
-config_source_dir: ""
-
-# Destination directory for configuration files on the target machine
-config_dest_dir: "{{ camilladsp_install_dir }}"

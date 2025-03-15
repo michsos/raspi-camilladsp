@@ -1,8 +1,0 @@
----
-# Default variables for overlay role
-
-# Paths
-overlay_dir: /boot/firmware/overlays
-config_file: /boot/firmware/config.txt
-
-# Recording options have been moved to the test_overlay role
