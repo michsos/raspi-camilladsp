@@ -1,7 +1,8 @@
 ---
 # User and system settings
-camilladsp_user: "michsos"
-camilladsp_group: "michsos"
+# These can be overridden with --extra-vars
+camilladsp_user: "{{ camilladsp_user_override | default(ansible_user) }}"
+camilladsp_group: "{{ camilladsp_group_override | default(ansible_user) }}"
 camilladsp_install_dir: "/home/{{ camilladsp_user }}/camilladsp"
 camilladsp_version: "3.0.2"
 camilladsp_python_version: "3"

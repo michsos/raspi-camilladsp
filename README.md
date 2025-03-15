@@ -134,6 +134,11 @@ For a complete setup, follow these steps in order:
   ansible-playbook site.yml --extra-vars "config_source_dir=/path/to/your/configs"
   ```
 
+- **Run with a specific CamillaDSP user** (different from the Ansible user):
+  ```
+  ansible-playbook site.yml --extra-vars "camilladsp_user_override=otheruser camilladsp_group_override=othergroup"
+  ```
+
 ## Configuration Options
 
 You can customize the setup by modifying the variables in the `vars.yml` file at the project root. This file contains settings for:
@@ -142,6 +147,14 @@ You can customize the setup by modifying the variables in the `vars.yml` file at
 - Hardware settings (overlay directory, config file path)
 - Testing settings (recording directory, durations, volume levels)
 - Config settings (source and destination directories)
+
+### User Configuration
+
+By default, CamillaDSP will be installed and run as the same user that Ansible uses to connect to the Raspberry Pi. This simplifies setup in most cases. If you need to use a different user, you can override this with command line variables:
+
+```
+ansible-playbook site.yml --extra-vars "camilladsp_user_override=otheruser camilladsp_group_override=othergroup"
+```
 
 ### CamillaDSP GUI
 
