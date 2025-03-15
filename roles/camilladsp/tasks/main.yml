@@ -166,3 +166,12 @@
       - "Please check if the GUI is accessible in your browser."
       - "The services will continue running after this playbook completes."
       - "To manage the services, use: sudo systemctl [start|stop|restart|status] [camilladsp|camillagui]"
+
+# Clean up temporary files
+- name: Clean up temporary files
+  file:
+    path: "/home/{{ camilladsp_user }}/camilladsp/temp"
+    state: absent
+  become: yes
+  changed_when: true
+  ignore_errors: yes

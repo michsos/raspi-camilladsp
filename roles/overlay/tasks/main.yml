@@ -113,3 +113,16 @@
   when: audio_device_check.rc == 0
 
 # Audio recording has been moved to the test_overlay role
+
+# Clean up temporary files
+- name: Clean up temporary DTS and DTBO files
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /tmp/8chi2s.dts
+    - /tmp/8chi2s.dtbo
+    - /tmp/genericstereoaudiocodec.dts
+    - /tmp/genericstereoaudiocodec.dtbo
+  ignore_errors: yes
+  changed_when: true

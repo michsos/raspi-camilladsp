@@ -138,3 +138,13 @@
   debug:
     msg: "Recordings have been saved to ./recordings/ on your local machine with timestamp {{ timestamp }}"
   when: audio_device_check.rc == 0
+
+# Clean up recordings on remote machine after transfer
+- name: Clean up recordings on remote machine
+  file:
+    path: "{{ recording_dir }}"
+    state: absent
+  become: true
+  when: audio_device_check.rc == 0 and not ansible_check_mode
+  changed_when: true
+  ignore_errors: yes
