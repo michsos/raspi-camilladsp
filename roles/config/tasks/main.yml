@@ -1,0 +1,118 @@
+---
+# Skip the entire role if not enabled
+- name: Check if config role is enabled
+  meta: end_play
+  when: not config_enabled | bool
+
+# Validate required parameters
+- name: Validate source directory parameter
+  fail:
+    msg: "config_source_dir must be specified when config_enabled is true. Use --extra-vars 'config_enabled=true config_source_dir=/path/to/your/configs'"
+  when: config_source_dir | length == 0
+
+# Check if source directory exists locally
+- name: Check if source directory exists
+  local_action:
+    module: stat
+    path: "{{ config_source_dir }}"
+  register: source_dir_stat
+  become: no
+
+- name: Fail if source directory does not exist
+  fail:
+    msg: "Source directory '{{ config_source_dir }}' does not exist on the local machine"
+  when: not source_dir_stat.stat.exists or not source_dir_stat.stat.isdir
+
+# Check if configs subdirectory exists in source
+- name: Check if configs subdirectory exists in source
+  local_action:
+    module: stat
+    path: "{{ config_source_dir }}/configs"
+  register: configs_dir_stat
+  become: no
+
+# Check if coeffs subdirectory exists in source
+- name: Check if coeffs subdirectory exists in source
+  local_action:
+    module: stat
+    path: "{{ config_source_dir }}/coeffs"
+  register: coeffs_dir_stat
+  become: no
+
+# Create destination directories if they don't exist
+- name: Ensure configs destination directory exists
+  file:
+    path: "{{ config_dest_dir }}/configs"
+    state: directory
+    owner: "{{ camilladsp_user }}"
+    group: "{{ camilladsp_group }}"
+    mode: '0755'
+  become: yes
+  when: configs_dir_stat.stat.exists and configs_dir_stat.stat.isdir
+
+- name: Ensure coeffs destination directory exists
+  file:
+    path: "{{ config_dest_dir }}/coeffs"
+    state: directory
+    owner: "{{ camilladsp_user }}"
+    group: "{{ camilladsp_group }}"
+    mode: '0755'
+  become: yes
+  when: coeffs_dir_stat.stat.exists and coeffs_dir_stat.stat.isdir
+
+# Copy configuration files from local machine to target
+- name: Copy configs files (yml only)
+  copy:
+    src: "{{ item }}"
+    dest: "{{ config_dest_dir }}/configs/"
+    owner: "{{ camilladsp_user }}"
+    group: "{{ camilladsp_group }}"
+    mode: '0644'
+  become: yes
+  with_fileglob:
+    - "{{ config_source_dir }}/configs/*.yml"
+  when: configs_dir_stat.stat.exists and configs_dir_stat.stat.isdir
+  register: configs_copy_result
+
+- name: Copy coeffs files (yml and wav)
+  copy:
+    src: "{{ item }}"
+    dest: "{{ config_dest_dir }}/coeffs/"
+    owner: "{{ camilladsp_user }}"
+    group: "{{ camilladsp_group }}"
+    mode: '0644'
+  become: yes
+  with_fileglob:
+    - "{{ config_source_dir }}/coeffs/*.yml"
+    - "{{ config_source_dir }}/coeffs/*.wav"
+  when: coeffs_dir_stat.stat.exists and coeffs_dir_stat.stat.isdir
+  register: coeffs_copy_result
+
+# Display copy results
+- name: Display configs copy result
+  debug:
+    msg: "Copied {{ configs_copy_result.results | selectattr('changed', 'equalto', true) | list | length }} config files to {{ config_dest_dir }}/configs"
+  when: configs_dir_stat.stat.exists and configs_dir_stat.stat.isdir
+
+- name: Display coeffs copy result
+  debug:
+    msg: "Copied {{ coeffs_copy_result.results | selectattr('changed', 'equalto', true) | list | length }} coefficient files to {{ config_dest_dir }}/coeffs"
+  when: coeffs_dir_stat.stat.exists and coeffs_dir_stat.stat.isdir
+
+- name: Display skipped directories
+  debug:
+    msg: "{{ skipped_dirs }}"
+  vars:
+    skipped_dirs: >-
+      {% set dirs = [] %}
+      {% if not (configs_dir_stat.stat.exists and configs_dir_stat.stat.isdir) %}
+        {% set dirs = dirs + ['configs'] %}
+      {% endif %}
+      {% if not (coeffs_dir_stat.stat.exists and coeffs_dir_stat.stat.isdir) %}
+        {% set dirs = dirs + ['coeffs'] %}
+      {% endif %}
+      {% if dirs | length > 0 %}
+        Skipped copying from the following directories (not found in source): {{ dirs | join(', ') }}
+      {% else %}
+        All directories were processed successfully
+      {% endif %}

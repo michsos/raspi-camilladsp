@@ -90,12 +90,23 @@ For a complete setup, follow these steps in order:
    ansible-playbook site.yml --tags camilladsp
    ```
 
-5. **Configure volume control** (optional):
+5. **Copy configuration files** (optional):
+   ```
+   ansible-playbook site.yml --tags config --extra-vars "config_enabled=true config_source_dir=/path/to/your/configs"
+   ```
+   
+   This will copy configuration files from your local machine to the Raspberry Pi:
+   - Files from `/path/to/your/configs/configs/*.yml` will be copied to CamillaDSP's configs directory
+   - Files from `/path/to/your/configs/coeffs/*.yml` and `/path/to/your/configs/coeffs/*.wav` will be copied to CamillaDSP's coeffs directory
+   
+   Note: If either the `configs` or `coeffs` subdirectory doesn't exist in your source directory, it will be skipped.
+
+6. **Configure volume control** (optional):
    ```
    ansible-playbook site.yml --tags volume
    ```
 
-6. **Set up read-only filesystem** (optional):
+7. **Set up read-only filesystem** (optional):
    ```
    ansible-playbook site.yml --tags readonly
    ```
@@ -119,7 +130,7 @@ You can customize the setup by modifying the variables in the role defaults file
 ### Installation and Configuration
 - `roles/overlay/defaults/main.yml`: Device tree overlay settings
 - `roles/camilladsp/defaults/main.yml`: CamillaDSP installation and service settings
-- `roles/config/defaults/main.yml`: CamillaDSP configuration settings
+- `roles/config/defaults/main.yml`: Configuration file copying settings
 - `roles/volume/defaults/main.yml`: Volume control settings
 - `roles/readonly/defaults/main.yml`: Read-only filesystem settings
 
