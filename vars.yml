@@ -1,0 +1,24 @@
+---
+# User and system settings
+camilladsp_user: "michsos"
+camilladsp_group: "michsos"
+camilladsp_install_dir: "/home/{{ camilladsp_user }}/camilladsp"
+camilladsp_version: "3.0.2"
+camilladsp_python_version: "3"
+
+# Hardware settings
+overlay_dir: /boot/firmware/overlays
+config_file: /boot/firmware/config.txt
+
+# Testing settings
+recording_dir: /tmp/audio_recordings
+recording_duration: 5  # Duration in seconds for recording tests
+soundtest_test_duration: 3  # Duration in seconds for each speaker test
+soundtest_volume_level: 10  # Volume level for test tones (0-100)
+soundtest_quiet_test: true  # Use quiet test tones
+soundtest_dropout_test_duration: 30  # Duration for dropout test
+soundtest_dropout_test_enabled: false  # Disabled by default
+
+# Config settings
+config_source_dir: ""  # Must be specified by user
+config_dest_dir: "{{ camilladsp_install_dir }}"
