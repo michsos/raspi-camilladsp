@@ -1,6 +1,6 @@
 ---
 # Default installation directory for CamillaDSP
-camilladsp_install_dir: "/opt/camilladsp"
+camilladsp_install_dir: "/home/{{ camilladsp_user }}/camilladsp"
 
 # User and group that will own the CamillaDSP installation
 camilladsp_user: "michsos"

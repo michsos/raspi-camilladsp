@@ -12,7 +12,7 @@
 # Create installation directory
 - name: Create installation directory
   file:
-    path: "/home/{{ camilladsp_user }}/camilladsp"
+    path: "{{ camilladsp_install_dir }}"
     state: directory
     mode: '0755'
     owner: "{{ camilladsp_user }}"
@@ -32,7 +32,7 @@
 - name: Execute CamillaDSP setup script
   shell: >
     cd /tmp &&
-    INSTALL_ROOT="/home/{{ camilladsp_user }}/camilladsp" ./full_install_venv.sh
+    ./full_install_venv.sh "{{ camilladsp_install_dir }}"
   args:
     executable: /bin/bash
   become: yes
@@ -49,7 +49,7 @@
 # Create empty statefile if it doesn't exist
 - name: Create empty statefile if it doesn't exist
   file:
-    path: "/home/{{ camilladsp_user }}/camilladsp/statefile.yml"
+    path: "{{ camilladsp_install_dir }}/statefile.yml"
     state: touch
     mode: '0644'
     owner: "{{ camilladsp_user }}"
@@ -161,7 +161,7 @@
   debug:
     msg:
       - "CamillaDSP and GUI are now running as system services!"
-      - "CamillaDSP is running on port 1234 with statefile: /home/{{ camilladsp_user }}/camilladsp/statefile.yml"
+      - "CamillaDSP is running on port 1234 with statefile: {{ camilladsp_install_dir }}/statefile.yml"
       - "Access the GUI at: http://localhost:5005 or http://{{ network_info.ansible_facts.ansible_default_ipv4.address }}:5005"
       - "Please check if the GUI is accessible in your browser."
       - "The services will continue running after this playbook completes."
@@ -170,7 +170,7 @@
 # Clean up temporary files
 - name: Clean up temporary files
   file:
-    path: "/home/{{ camilladsp_user }}/camilladsp/temp"
+    path: "{{ camilladsp_install_dir }}/temp"
     state: absent
   become: yes
   changed_when: true
