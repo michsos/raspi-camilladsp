@@ -2,6 +2,8 @@
 - name: Configure Raspberry Pi with CamillaDSP
   hosts: raspi
   become: yes
+  vars_files:
+    - vars.yml
   
   roles:
     - role: overlay
@@ -18,9 +20,4 @@
     
     - role: config
       tags: [config]
-    
-    - role: volume
-      tags: [volume]
-    
-    - role: readonly
-      tags: [readonly]
+      when: config_source_dir | length > 0
