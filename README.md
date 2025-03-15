@@ -7,9 +7,9 @@ This repository contains Ansible configuration and setup for running CamillaDSP 
 This project provides an automated way to configure a Raspberry Pi for high-quality audio processing using CamillaDSP. It handles:
 
 - Setting up I2S audio device tree overlays
-- Installing and configuring CamillaDSP
-- Recording audio from I2S inputs
-- Setting up system services
+- Installing and configuring CamillaDSP and its web GUI
+- Testing audio input via recording
+- Testing audio output via speaker tests
 - Configuring volume control
 - Optional read-only filesystem for stability
 
@@ -17,12 +17,18 @@ This project provides an automated way to configure a Raspberry Pi for high-qual
 
 The project is organized into Ansible roles, each handling a specific aspect of the setup:
 
+### Installation and Configuration Roles
+
 - **overlay**: Configures device tree overlays for I2S audio
-- **camilladsp**: Installs and configures CamillaDSP
+- **camilladsp**: Installs and configures CamillaDSP and its services
 - **config**: Manages CamillaDSP configuration files
-- **services**: Sets up systemd services
 - **volume**: Configures volume control
 - **readonly**: Sets up read-only filesystem (optional)
+
+### Testing Roles
+
+- **test_overlay**: Tests audio input via recording
+- **test_speakers**: Tests audio output via speaker tests
 
 ## How to Use
 
@@ -53,52 +59,73 @@ The project is organized into Ansible roles, each handling a specific aspect of 
    ansible-playbook site.yml
    ```
 
-### Audio Recording
+### Step-by-Step Usage
 
-By default, the setup will record audio from all 8 channels to a single multichannel WAV file (48kHz, 24-bit). You have several options:
+For a complete setup, follow these steps in order:
 
-1. **Run the full setup with audio recording** (default):
+1. **Set up the audio hardware** (device tree overlays):
    ```
-   ansible-playbook site.yml
-   ```
-
-2. **Run the full setup without audio recording**:
-   ```
-   ansible-playbook site.yml --extra-vars "record_audio_channels=false"
+   ansible-playbook site.yml --tags overlay
    ```
 
-3. **Test only the overlay configuration**:
+2. **Test the audio input** via recording:
    ```
-   ansible-playbook test-overlay.yml
+   ansible-playbook site.yml --tags test_overlay
    ```
-
-4. **Test only the soundcard**:
+   
+   The recordings will be saved to the `./recordings/` directory on your local machine.
+   
+   You can adjust the recording duration:
    ```
-   ansible-playbook test-soundcard.yml
-   ```
-
-5. **Record audio only** (without redoing configuration):
-   ```
-   ansible-playbook record-channels-only.yml
+   ansible-playbook site.yml --tags test_overlay --extra-vars "recording_duration=30"
    ```
 
-6. **Adjust the recording duration**:
+3. **Test the speakers**:
    ```
-   ansible-playbook record-channels-only.yml --extra-vars "recording_duration=30"
+   ansible-playbook site.yml --tags test_speakers
    ```
 
-The recordings will be saved to the `./recordings/` directory on your local machine.
+4. **Install and configure CamillaDSP**:
+   ```
+   ansible-playbook site.yml --tags camilladsp
+   ```
+
+5. **Configure volume control** (optional):
+   ```
+   ansible-playbook site.yml --tags volume
+   ```
+
+6. **Set up read-only filesystem** (optional):
+   ```
+   ansible-playbook site.yml --tags readonly
+   ```
+
+### Quick Commands
+
+- **Run the complete setup** in one command:
+  ```
+  ansible-playbook site.yml
+  ```
+
+- **Run the complete setup without audio recording**:
+  ```
+  ansible-playbook site.yml --extra-vars "record_audio_channels=false"
+  ```
 
 ## Configuration Options
 
 You can customize the setup by modifying the variables in the role defaults files:
 
-- `roles/overlay/defaults/main.yml`: Device tree overlay settings and recording options
-- `roles/camilladsp/defaults/main.yml`: CamillaDSP installation settings
+### Installation and Configuration
+- `roles/overlay/defaults/main.yml`: Device tree overlay settings
+- `roles/camilladsp/defaults/main.yml`: CamillaDSP installation and service settings
 - `roles/config/defaults/main.yml`: CamillaDSP configuration settings
-- `roles/services/defaults/main.yml`: Service configuration
 - `roles/volume/defaults/main.yml`: Volume control settings
 - `roles/readonly/defaults/main.yml`: Read-only filesystem settings
+
+### Testing
+- `roles/test_overlay/defaults/main.yml`: Audio recording settings
+- `roles/test_speakers/defaults/main.yml`: Speaker test settings
 
 ### CamillaDSP GUI
 

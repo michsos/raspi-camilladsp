@@ -5,7 +5,4 @@
 overlay_dir: /boot/firmware/overlays
 config_file: /boot/firmware/config.txt
 
-# Recording options
-record_audio_channels: true  # Enabled by default, records all channels to a single WAV file
-recording_dir: /tmp/audio_recordings
-recording_duration: 5  # Duration in seconds (shorter since we're recording multiple files)
+# Recording options have been moved to the test_overlay role

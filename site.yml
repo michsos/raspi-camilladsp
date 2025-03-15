@@ -6,10 +6,13 @@
   roles:
     - role: overlay
       tags: [overlay]
-    
-    - role: soundtest
-      tags: [soundtest]
-    
+      
+    - role: test_overlay
+      tags: [test_overlay]
+
+    - role: test_speakers
+      tags: [test_speakers]
+
     - role: camilladsp
       tags: [camilladsp]
     
@@ -18,9 +21,6 @@
     
     - role: volume
       tags: [volume]
-    
-    - role: services
-      tags: [services]
     
     - role: readonly
       tags: [readonly]

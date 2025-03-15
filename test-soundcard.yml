@@ -1,7 +1,0 @@
----
-- name: Test Sound Card and Speakers
-  hosts: raspi
-  become: yes
-  
-  roles:
-    - role: soundtest

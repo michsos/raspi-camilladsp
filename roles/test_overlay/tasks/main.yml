@@ -1,0 +1,140 @@
+---
+# Tasks for test_overlay role
+
+# First check if the audio device is recognized
+- name: Check if audio device is recognized
+  shell: arecord -l | grep -q "GenericStereoAu"
+  register: audio_device_check
+  failed_when: false
+  changed_when: false
+
+- name: Display audio device status
+  debug:
+    msg: "Audio device is {{ 'recognized' if audio_device_check.rc == 0 else 'NOT recognized' }}"
+
+- name: Fail if audio device is not recognized
+  fail:
+    msg: "Audio device is not recognized. Please run the overlay configuration first with: ansible-playbook site.yml --tags overlay"
+  when: audio_device_check.rc != 0
+
+# Get detailed audio device parameters
+- name: Get detailed audio device parameters
+  shell: arecord -D hw:GenericStereoAu,1 --dump-hw-params /dev/zero
+  register: audio_params
+  failed_when: false
+  changed_when: false
+  when: audio_device_check.rc == 0
+
+- name: Display audio device parameters
+  debug:
+    var: audio_params.stdout_lines
+  when: audio_device_check.rc == 0
+
+# Recording tasks
+- name: Ensure alsa-utils is installed
+  apt:
+    name: alsa-utils
+    state: present
+    update_cache: true
+  become: true
+  when: audio_device_check.rc == 0
+
+- name: Ask user to confirm audio is streaming to the device
+  pause:
+    prompt: "Please ensure audio is streaming to the I2S device. Press ENTER to continue with recording or Ctrl+C to abort."
+  when: audio_device_check.rc == 0 and not ansible_check_mode
+
+- name: Create directory for recordings
+  file:
+    path: "{{ recording_dir }}"
+    state: directory
+    mode: '0755'
+  become: true
+  when: audio_device_check.rc == 0
+
+- name: Get audio device details
+  shell: "arecord -l | grep GenericStereoAu"
+  register: audio_device_details
+  changed_when: false
+  when: audio_device_check.rc == 0
+
+- name: Display raw audio device details
+  debug:
+    var: audio_device_details.stdout
+  when: audio_device_check.rc == 0
+
+- name: Parse card number
+  set_fact:
+    card_number: "{{ audio_device_details.stdout.split('card ')[1].split(':')[0] }}"
+  when: audio_device_check.rc == 0 and audio_device_details.stdout is defined and audio_device_details.stdout != ""
+
+- name: Parse device number
+  set_fact:
+    device_number: "{{ audio_device_details.stdout.split('device ')[1].split(':')[0] }}"
+  when: audio_device_check.rc == 0 and audio_device_details.stdout is defined and audio_device_details.stdout != ""
+
+- name: Get current timestamp
+  set_fact:
+    timestamp: "{{ lookup('pipe', 'date +%Y%m%d_%H%M%S') }}"
+  when: audio_device_check.rc == 0
+
+- name: Create recordings directory locally
+  delegate_to: localhost
+  become: false
+  file:
+    path: "./recordings"
+    state: directory
+    mode: '0755'
+  when: audio_device_check.rc == 0
+
+- name: Display detected audio device
+  debug:
+    msg: "Using audio device: hw:{{ card_number }},{{ device_number }}"
+  when: audio_device_check.rc == 0 and card_number is defined and device_number is defined
+
+# Use CD standard or higher formats and rates
+- name: Set formats and rates
+  set_fact:
+    supported_formats: ["S16_LE", "S24_LE", "S32_LE"]
+    supported_rates: ["44100", "48000", "96000"]  # 192000Hz is not supported by the device
+  when: audio_device_check.rc == 0
+
+- name: Display recording configurations
+  debug:
+    msg: |
+      Using formats: {{ supported_formats | join(', ') }}
+      Using sample rates: {{ supported_rates | join(', ') }} (CD standard or higher)
+  when: audio_device_check.rc == 0
+
+# Record in each supported format
+- name: Record in supported configurations
+  shell: "arecord -D hw:{{ card_number }},{{ device_number }} -c 8 -f {{ item[0] }} -r {{ item[1] }} -d {{ recording_duration }} {{ recording_dir }}/multichannel_{{ timestamp }}_{{ item[0] }}_{{ item[1] }}Hz.wav"
+  register: recording_results
+  ignore_errors: true
+  become: true
+  with_nested:
+    - "{{ supported_formats }}"
+    - "{{ supported_rates }}"
+  when: audio_device_check.rc == 0 and not ansible_check_mode and supported_rates is defined and supported_formats is defined
+
+- name: Display recording results
+  debug:
+    msg: "Recording in {{ item.item[0] }} format at {{ item.item[1] }}Hz completed with return code {{ item.rc|default(0) }}"
+  with_items: "{{ recording_results.results|default([]) }}"
+  when: audio_device_check.rc == 0 and recording_results is defined
+
+- name: Fetch recordings to local machine
+  fetch:
+    src: "{{ recording_dir }}/multichannel_{{ timestamp }}_{{ item[0] }}_{{ item[1] }}Hz.wav"
+    dest: "./recordings/"
+    flat: yes
+  with_nested:
+    - "{{ supported_formats }}"
+    - "{{ supported_rates }}"
+  ignore_errors: true
+  when: audio_device_check.rc == 0 and not ansible_check_mode
+
+- name: Display recording location
+  debug:
+    msg: "Recordings have been saved to ./recordings/ on your local machine with timestamp {{ timestamp }}"
+  when: audio_device_check.rc == 0

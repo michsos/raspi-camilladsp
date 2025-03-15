@@ -112,7 +112,4 @@
     var: audio_params.stdout_lines
   when: audio_device_check.rc == 0
 
-# Include audio recording tasks
-- name: Include audio recording tasks
-  include_tasks: record_channels.yml
-  when: audio_device_check.rc == 0
+# Audio recording has been moved to the test_overlay role
