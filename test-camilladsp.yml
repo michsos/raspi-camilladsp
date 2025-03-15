@@ -1,7 +1,0 @@
----
-- name: Test CamillaDSP Installation
-  hosts: raspi
-  become: yes
-  
-  roles:
-    - role: camilladsp
