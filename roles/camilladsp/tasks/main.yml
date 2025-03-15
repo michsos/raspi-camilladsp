@@ -6,7 +6,6 @@
       - unar
       - python3
       - python3-venv
-      - screen
     state: present
   become: yes
 
@@ -58,94 +57,112 @@
   become: yes
   changed_when: false
 
-# Run CamillaDSP directly and get PID
-- name: Start CamillaDSP in background and get PID
-  shell: >
-    /home/{{ camilladsp_user }}/camilladsp/bin/camilladsp -p1234 -w -s /home/{{ camilladsp_user }}/camilladsp/statefile.yml 2>&1 & echo $!
-  args:
-    executable: /bin/bash
+# Create systemd service files
+- name: Create CamillaDSP systemd service file
+  template:
+    src: camilladsp.service.j2
+    dest: /etc/systemd/system/camilladsp.service
+    owner: root
+    group: root
+    mode: '0644'
   become: yes
-  become_user: "{{ camilladsp_user }}"
-  register: camilladsp_pid
+  register: camilladsp_service_file
 
-# Run CamillaGUI directly and get PID
-- name: Start CamillaGUI in background and get PID
-  shell: >
-    cd /home/{{ camilladsp_user }}/camilladsp &&
-    nohup camillagui_venv/bin/python gui/main.py 2>&1 & echo $!
-  args:
-    executable: /bin/bash
+- name: Create CamillaGUI systemd service file
+  template:
+    src: camillagui.service.j2
+    dest: /etc/systemd/system/camillagui.service
+    owner: root
+    group: root
+    mode: '0644'
   become: yes
-  become_user: "{{ camilladsp_user }}"
-  register: camillagui_pid
+  register: camillagui_service_file
+
+# Reload systemd if service files changed
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+  become: yes
+  when: camilladsp_service_file.changed or camillagui_service_file.changed
+
+# Enable and start services
+- name: Enable and start CamillaDSP service
+  systemd:
+    name: camilladsp
+    enabled: yes
+    state: started
+  become: yes
+
+- name: Enable and start CamillaGUI service
+  systemd:
+    name: camillagui
+    enabled: yes
+    state: started
+  become: yes
 
 # Wait for services to start
 - name: Wait for services to start
   pause:
     seconds: 5
 
-# Check if processes are running
-- name: Check if CamillaDSP is running
-  shell: "ps -p {{ camilladsp_pid.stdout }} -o comm= || echo 'Not running'"
+# Check service status
+- name: Check CamillaDSP service status
+  systemd:
+    name: camilladsp
   register: camilladsp_status
+  become: yes
   changed_when: false
-  ignore_errors: yes
 
-- name: Check if CamillaGUI is running
-  shell: "ps -p {{ camillagui_pid.stdout }} -o comm= || echo 'Not running'"
+- name: Check CamillaGUI service status
+  systemd:
+    name: camillagui
   register: camillagui_status
+  become: yes
   changed_when: false
-  ignore_errors: yes
 
-# Display process status
-- name: Display process status
+# Display service status
+- name: Display service status
   debug:
     msg:
-      - "CamillaDSP PID: {{ camilladsp_pid.stdout }}, Status: {{ camilladsp_status.stdout }}"
-      - "CamillaGUI PID: {{ camillagui_pid.stdout }}, Status: {{ camillagui_status.stdout }}"
+      - "CamillaDSP service status: {{ 'Active' if camilladsp_status.status.ActiveState == 'active' else 'Inactive' }}"
+      - "CamillaGUI service status: {{ 'Active' if camillagui_status.status.ActiveState == 'active' else 'Inactive' }}"
+
+# Get service logs
+- name: Get CamillaDSP service logs
+  shell: "journalctl -u camilladsp.service -n 20 --no-pager"
+  register: camilladsp_logs
+  become: yes
+  changed_when: false
+
+- name: Get CamillaGUI service logs
+  shell: "journalctl -u camillagui.service -n 20 --no-pager"
+  register: camillagui_logs
+  become: yes
+  changed_when: false
+
+# Display service logs
+- name: Display CamillaDSP service logs
+  debug:
+    var: camilladsp_logs.stdout_lines
+
+- name: Display CamillaGUI service logs
+  debug:
+    var: camillagui_logs.stdout_lines
+
+# Get IP address for GUI access
+- name: Get IP address
+  setup:
+    filter: ansible_default_ipv4
+  register: network_info
+  changed_when: false
 
 # Display GUI access information
 - name: Display GUI access information
   debug:
     msg:
-      - "CamillaDSP and GUI are now running!"
+      - "CamillaDSP and GUI are now running as system services!"
       - "CamillaDSP is running on port 1234 with statefile: /home/{{ camilladsp_user }}/camilladsp/statefile.yml"
-      - "Access the GUI at: http://localhost:5005 or http://{{ ansible_hostname }}:5005"
+      - "Access the GUI at: http://localhost:5005 or http://{{ network_info.ansible_facts.ansible_default_ipv4.address }}:5005"
       - "Please check if the GUI is accessible in your browser."
-
-# Wait for user confirmation
-- name: Wait for user confirmation
-  pause:
-    prompt: "Please check if the CamillaDSP GUI is accessible in your browser. Press Enter to continue and stop the services."
-
-# Stop CamillaGUI using PID
-- name: Stop CamillaGUI using PID
-  shell: "kill -KILL {{ camillagui_pid.stdout }} || true"
-  args:
-    executable: /bin/bash
-  become: yes
-  become_user: "{{ camilladsp_user }}"
-  ignore_errors: yes
-
-# Stop CamillaDSP using PID
-- name: Stop CamillaDSP using PID
-  shell: "kill -KILL {{ camilladsp_pid.stdout }} || true"
-  args:
-    executable: /bin/bash
-  become: yes
-  become_user: "{{ camilladsp_user }}"
-  ignore_errors: yes
-
-# Verify processes are stopped
-- name: Verify processes are stopped
-  shell: "ps -p {{ camilladsp_pid.stdout }},{{ camillagui_pid.stdout }} || echo 'All processes stopped'"
-  register: stop_verification
-  changed_when: false
-  ignore_errors: yes
-
-# Confirm services stopped
-- name: Confirm services stopped
-  debug:
-    msg:
-      - "CamillaDSP and GUI have been stopped. Installation complete."
-      - "Stop verification: {{ stop_verification.stdout }}"
+      - "The services will continue running after this playbook completes."
+      - "To manage the services, use: sudo systemctl [start|stop|restart|status] [camilladsp|camillagui]"

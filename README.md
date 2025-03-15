@@ -72,9 +72,9 @@ By default, the setup will record audio from all 8 channels to a single multicha
    ansible-playbook test-overlay.yml
    ```
 
-4. **Test only the CamillaDSP installation**:
+4. **Test only the soundcard**:
    ```
-   ansible-playbook test-camilladsp.yml
+   ansible-playbook test-soundcard.yml
    ```
 
 5. **Record audio only** (without redoing configuration):
@@ -102,24 +102,38 @@ You can customize the setup by modifying the variables in the role defaults file
 
 ### CamillaDSP GUI
 
-The CamillaDSP role includes the CamillaDSP GUI, which provides a web interface for configuring and controlling CamillaDSP. When you run the CamillaDSP role, it will:
+The CamillaDSP role includes the CamillaDSP GUI, which provides a web interface for configuring and controlling CamillaDSP. The role:
 
-1. Install CamillaDSP and its GUI
-2. Start CamillaDSP with the `-p1234 -w -s` parameters (websocket server on port 1234 with statefile)
-3. Start the GUI on port 5005 (fixed port)
-4. Pause for you to test the GUI in your browser
-5. Attempt to stop both processes after you confirm
+1. Installs CamillaDSP and its GUI
+2. Creates systemd service files for both CamillaDSP and CamillaGUI
+3. Enables and starts both services automatically
+4. Displays service status and logs
+
+CamillaDSP runs with the `-p1234 -w -s` parameters (websocket server on port 1234 with statefile) and the GUI runs on port 5005 (fixed port).
 
 You can access the GUI at:
 - http://localhost:5005 (if running on your local machine)
-- http://raspi.local:5005 (if running on a Raspberry Pi)
+- http://your-raspberry-pi-ip:5005 (if running on a Raspberry Pi)
 
-**Note:** There is a known issue where the CamillaGUI process may not terminate properly after testing. If you notice the GUI is still accessible after the playbook completes, you may need to manually terminate it using:
-```
-ssh user@raspi.local "pkill -f 'python.*gui/main.py'"
-```
+The services are configured to start automatically on boot and restart if they crash. You can manage them using standard systemd commands:
 
-The processes are managed using PIDs rather than screen sessions for more reliable process management.
+```
+# Check service status
+sudo systemctl status camilladsp
+sudo systemctl status camillagui
+
+# Restart services
+sudo systemctl restart camilladsp
+sudo systemctl restart camillagui
+
+# Stop services
+sudo systemctl stop camilladsp
+sudo systemctl stop camillagui
+
+# View service logs
+sudo journalctl -u camilladsp
+sudo journalctl -u camillagui
+```
 
 ## TODOs/Roadmap
 
@@ -157,12 +171,13 @@ If you encounter issues with CamillaDSP installation or the GUI:
 1. Check if Python and pip are installed correctly: `python3 --version && pip3 --version`
 2. Verify the installation directory exists and has correct permissions: `ls -la ~/camilladsp`
 3. Check if the virtual environment was created: `ls -la ~/camilladsp/camillagui_venv`
-4. Try running CamillaDSP manually: `~/camilladsp/bin/camilladsp -p1234 -w -s ~/camilladsp/statefile.yml`
-5. Try running the GUI manually: `cd ~/camilladsp && camillagui_venv/bin/python gui/main.py`
-6. Check for any error messages in the Ansible output
-7. If the GUI doesn't stop properly after testing, manually terminate it: `pkill -f 'python.*gui/main.py'`
-8. If CamillaDSP doesn't stop properly, manually terminate it: `pkill -f 'camilladsp -p1234'`
-9. Check running processes: `ps aux | grep -E 'camilladsp|python.*gui/main.py'`
+4. Check the systemd service status: `sudo systemctl status camilladsp && sudo systemctl status camillagui`
+5. View the service logs: `sudo journalctl -u camilladsp -n 50 && sudo journalctl -u camillagui -n 50`
+6. Try restarting the services: `sudo systemctl restart camilladsp && sudo systemctl restart camillagui`
+7. Verify the service files are correctly configured: `cat /etc/systemd/system/camilladsp.service /etc/systemd/system/camillagui.service`
+8. Try running CamillaDSP manually: `~/camilladsp/bin/camilladsp -p1234 -w -s ~/camilladsp/statefile.yml`
+9. Try running the GUI manually: `cd ~/camilladsp && camillagui_venv/bin/python gui/main.py`
+10. Check for any error messages in the Ansible output
 
 ## Contributing
 

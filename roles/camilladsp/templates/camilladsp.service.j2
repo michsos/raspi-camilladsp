@@ -1,0 +1,17 @@
+[Unit]
+Description=CamillaDSP Audio Processing Service
+After=network.target sound.target
+
+[Service]
+Type=simple
+User={{ camilladsp_user }}
+Group={{ camilladsp_group }}
+ExecStart=/home/{{ camilladsp_user }}/camilladsp/bin/camilladsp -p1234 -w -s /home/{{ camilladsp_user }}/camilladsp/statefile.yml
+WorkingDirectory=/home/{{ camilladsp_user }}/camilladsp
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,18 @@
+[Unit]
+Description=CamillaGUI Web Interface for CamillaDSP
+After=network.target camilladsp.service
+Requires=camilladsp.service
+
+[Service]
+Type=simple
+User={{ camilladsp_user }}
+Group={{ camilladsp_group }}
+ExecStart=/home/{{ camilladsp_user }}/camilladsp/camillagui_venv/bin/python /home/{{ camilladsp_user }}/camilladsp/gui/main.py
+WorkingDirectory=/home/{{ camilladsp_user }}/camilladsp
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
