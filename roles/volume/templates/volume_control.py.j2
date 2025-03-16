@@ -74,17 +74,17 @@ except Exception as e:
 
 def adjust_volume(change):
     try:
-        current_volume = cdsp.volume.main()
+        current_volume = cdsp.volume.main_volume()
         new_volume = max(-99, min(0, current_volume + change))
-        cdsp.volume.set_main(new_volume)
+        cdsp.volume.set_main_volume(new_volume)
         logging.debug(f"Volume adjusted to {new_volume} dB")
     except Exception as e:
         logging.error(f"Error adjusting volume: {e}")
 
 def toggle_mute():
     try:
-        current_mute = cdsp.mute.main()
-        cdsp.mute.set_main(not current_mute)
+        current_mute = cdsp.volume.main_mute()
+        cdsp.volume.set_main_mute(not current_mute)
         logging.debug(f"Mute toggled to {'ON' if not current_mute else 'OFF'}")
     except Exception as e:
         logging.error(f"Error toggling mute: {e}")
