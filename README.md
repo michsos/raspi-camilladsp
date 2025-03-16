@@ -10,7 +10,7 @@ This project provides an automated way to configure a Raspberry Pi for high-qual
 - Installing and configuring CamillaDSP and its web GUI
 - Testing audio input via recording
 - Testing audio output via speaker tests
-- ~~Configuring volume control~~ (not currently supported)
+- Configuring volume control with FLIRC IR receiver
 - ~~Optional read-only filesystem for stability~~ (not currently supported)
 
 ## Project Structure
@@ -22,7 +22,7 @@ The project is organized into Ansible roles, each handling a specific aspect of 
 - **overlay**: Configures device tree overlays for I2S audio
 - **camilladsp**: Installs and configures CamillaDSP and its services
 - **config**: Manages CamillaDSP configuration files
-- **volume**: ~~Configures volume control~~ (not currently supported)
+- **volume**: Configures volume control using FLIRC IR receiver
 - **readonly**: ~~Sets up read-only filesystem~~ (not currently supported)
 
 ### Testing Roles
@@ -111,6 +111,26 @@ For a complete setup, follow these steps in order:
    ```
    ansible-playbook site.yml --tags volume
    ```
+   
+   This will:
+   - Install the required dependencies (evdev, camilladsp Python client)
+   - Set up a volume control service that uses a FLIRC IR receiver to control CamillaDSP volume
+   - Enable and start the service
+   
+   By default, it uses the following key mappings:
+   - Up arrow: Increase volume
+   - Down arrow: Decrease volume
+   - Esc: Toggle mute
+   
+   You can customize these mappings and other settings by overriding variables:
+   ```
+   ansible-playbook site.yml --tags volume --extra-vars "volume_up_key=KEY_VOLUMEUP volume_down_key=KEY_VOLUMEDOWN volume_mute_key=KEY_MUTE"
+   ```
+   
+   If you want to disable volume control, you can use:
+   ```
+   ansible-playbook site.yml --tags volume --extra-vars "volume_control_enabled=false"
+   ```
 
 7. **Set up read-only filesystem** (optional):
    ```
@@ -195,7 +215,7 @@ sudo journalctl -u camillagui
 
 - [x] Complete CamillaDSP installation role
 - [ ] Add configuration templates for different audio setups
-- [ ] ~~Implement volume control integration~~ (not currently supported)
+- [x] Implement volume control integration
 - [ ] ~~Add read-only filesystem support~~ (not currently supported)
 - [ ] Create backup/restore functionality
 - [x] Add web interface configuration

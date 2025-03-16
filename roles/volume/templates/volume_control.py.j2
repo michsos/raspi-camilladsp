@@ -1,0 +1,123 @@
+#!/usr/bin/env python3
+import evdev
+from camilladsp import CamillaClient
+import glob
+import logging
+import sys
+import atexit
+import argparse
+
+# Parse command-line arguments to set logging level
+parser = argparse.ArgumentParser(description='FLIRC to CamillaDSP Controller')
+parser.add_argument('--log-level', default='INFO',
+                    choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                    help='Set the logging level (default: INFO)')
+args = parser.parse_args()
+
+# Configure logging to output to stderr
+logging.basicConfig(stream=sys.stderr, level=getattr(logging, args.log_level),
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Define the volume change increments
+VOLUME_CHANGE_INITIAL = {{ volume_change_initial }}  # Change when the key is first pressed
+VOLUME_CHANGE_REPEAT = {{ volume_change_repeat }}   # Change when the key is held down
+
+# Key mappings
+VOLUME_UP_KEY = "{{ volume_up_key }}"
+VOLUME_DOWN_KEY = "{{ volume_down_key }}"
+VOLUME_MUTE_KEY = "{{ volume_mute_key }}"
+
+# Dynamic detection of the FLIRC input device
+FLIRC_DEVICE_GLOB = '/dev/input/by-id/*-flirc*-event-kbd'
+flirc_devices = glob.glob(FLIRC_DEVICE_GLOB)
+if flirc_devices:
+    FLIRC_DEVICE_PATH = flirc_devices[0]
+    logging.info(f"Found FLIRC device at {FLIRC_DEVICE_PATH}")
+else:
+    logging.error("FLIRC device not found.")
+    sys.exit(1)
+
+# Initialize CamillaClient with error handling
+cdsp = CamillaClient("127.0.0.1", 1234)
+try:
+    cdsp.connect()
+    logging.info("Connected to CamillaDSP")
+except Exception as e:
+    logging.error(f"Failed to connect to CamillaDSP: {e}")
+    sys.exit(1)
+
+# Setup FLIRC device with error handling
+try:
+    flirc = evdev.InputDevice(FLIRC_DEVICE_PATH)
+    logging.info(f"Opened FLIRC device: {flirc}")
+except Exception as e:
+    logging.error(f"Failed to open FLIRC device: {e}")
+    sys.exit(1)
+
+def cleanup():
+    if 'flirc' in globals():
+        try:
+            flirc.ungrab()
+            logging.info("Released FLIRC device")
+        except Exception as e:
+            logging.error(f"Error during cleanup: {e}")
+
+atexit.register(cleanup)  # Ensure resources are released on exit
+
+# Grab the device with error handling
+try:
+    flirc.grab()
+    logging.info("FLIRC device grabbed")
+except Exception as e:
+    logging.error(f"Failed to grab FLIRC device: {e}")
+    sys.exit(1)
+
+def adjust_volume(change):
+    try:
+        current_volume = cdsp.volume.main()
+        new_volume = max(-99, min(0, current_volume + change))
+        cdsp.volume.set_main(new_volume)
+        logging.debug(f"Volume adjusted to {new_volume} dB")
+    except Exception as e:
+        logging.error(f"Error adjusting volume: {e}")
+
+def toggle_mute():
+    try:
+        current_mute = cdsp.mute.main()
+        cdsp.mute.set_main(not current_mute)
+        logging.debug(f"Mute toggled to {'ON' if not current_mute else 'OFF'}")
+    except Exception as e:
+        logging.error(f"Error toggling mute: {e}")
+
+def main():
+    try:
+        for event in flirc.read_loop():
+            if event.type == evdev.ecodes.EV_KEY:
+                attrib = evdev.categorize(event)
+                if attrib.keystate == 1:  # Key pressed down
+                    logging.debug(f"Key pressed: {attrib.keycode}")
+                    if attrib.keycode == VOLUME_DOWN_KEY:
+                        adjust_volume(-VOLUME_CHANGE_INITIAL)
+                    elif attrib.keycode == VOLUME_UP_KEY:
+                        adjust_volume(VOLUME_CHANGE_INITIAL)
+                    elif attrib.keycode == VOLUME_MUTE_KEY:
+                        toggle_mute()
+                elif attrib.keystate == 2:  # Key held down (repeat)
+                    logging.debug(f"Key held down: {attrib.keycode}")
+                    if attrib.keycode == VOLUME_DOWN_KEY:
+                        adjust_volume(-VOLUME_CHANGE_REPEAT)
+                    elif attrib.keycode == VOLUME_UP_KEY:
+                        adjust_volume(VOLUME_CHANGE_REPEAT)
+    except Exception as e:
+        logging.error(f"Error in main loop: {e}")
+        sys.exit(1)
+
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        logging.info("Interrupted by user")
+    except Exception as e:
+        logging.error(f"Unhandled exception: {e}")
+    finally:
+        cleanup()

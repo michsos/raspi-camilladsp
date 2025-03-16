@@ -1,0 +1,25 @@
+[Unit]
+Description=CamillaDSP Volume Control Service
+After=camilladsp.service
+Wants=camilladsp.service
+
+[Service]
+Type=simple
+User={{ camilladsp_user }}
+Group={{ camilladsp_group }}
+ExecStart={{ camilladsp_install_dir }}/camillagui_venv/bin/python {{ camilladsp_install_dir }}/volume_control.py --log-level=WARNING
+WorkingDirectory={{ camilladsp_install_dir }}
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# To change log level temporarily:
+# sudo systemctl edit --runtime volume_control.service
+# And add:
+# [Service]
+# ExecStart=
+# ExecStart={{ camilladsp_install_dir }}/camillagui_venv/bin/python {{ camilladsp_install_dir }}/volume_control.py --log-level=DEBUG
+
+[Install]
+WantedBy=multi-user.target

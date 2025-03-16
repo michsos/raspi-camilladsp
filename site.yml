@@ -21,3 +21,7 @@
     - role: config
       tags: [config]
       when: config_source_dir | length > 0
+      
+    - role: volume
+      tags: [volume]
+      when: volume_control_enabled | bool

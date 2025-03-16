@@ -1,0 +1,14 @@
+---
+# Default variables for the volume role
+
+# Whether to enable the volume control service
+volume_control_enabled: true
+
+# Volume change increments
+volume_change_initial: 0.5  # Change when the key is first pressed
+volume_change_repeat: 0.1   # Change when the key is held down
+
+# Key mappings (using evdev key codes)
+volume_up_key: "KEY_UP"
+volume_down_key: "KEY_DOWN"
+volume_mute_key: "KEY_ESC"

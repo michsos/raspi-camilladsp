@@ -1,0 +1,108 @@
+---
+# Tasks for the volume control role
+
+# Validate that volume_control_enabled is set
+- name: Validate volume control is enabled
+  debug:
+    msg: "Volume control is enabled"
+  when: volume_control_enabled | bool
+
+# Skip if volume control is not enabled
+- name: Skip if volume control is not enabled
+  meta: end_play
+  when: not (volume_control_enabled | bool)
+
+# Install required system packages for evdev
+- name: Install required system packages for evdev
+  apt:
+    name:
+      - python3-evdev
+      - python3-dev
+      - build-essential
+    state: present
+  become: yes
+
+# Install Python dependencies in the virtual environment
+- name: Install Python dependencies in the virtual environment
+  pip:
+    name:
+      - evdev
+      - camilladsp
+    virtualenv: "{{ camilladsp_install_dir }}/camillagui_venv"
+    state: present
+  become: yes
+  become_user: "{{ camilladsp_user }}"
+
+# Create volume control script from template
+- name: Create volume control script from template
+  template:
+    src: volume_control.py.j2
+    dest: "{{ camilladsp_install_dir }}/volume_control.py"
+    mode: '0755'
+    owner: "{{ camilladsp_user }}"
+    group: "{{ camilladsp_group }}"
+  become: yes
+  register: volume_script
+
+# Create systemd service file
+- name: Create volume control systemd service file
+  template:
+    src: volume_control.service.j2
+    dest: /etc/systemd/system/volume_control.service
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  register: volume_service_file
+
+# Reload systemd if service file changed
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+  become: yes
+  when: volume_service_file.changed
+
+# Enable and start volume control service
+- name: Enable and start volume control service
+  systemd:
+    name: volume_control
+    enabled: yes
+    state: started
+  become: yes
+  register: volume_service_status
+  when: not ansible_check_mode
+
+# Check service status
+- name: Check volume control service status
+  systemd:
+    name: volume_control
+  register: volume_status
+  become: yes
+  changed_when: false
+  when: not ansible_check_mode
+
+# Display service status
+- name: Display volume control service status
+  debug:
+    msg: "Volume control service status: {{ 'Active' if volume_status.status.ActiveState == 'active' else 'Inactive' }}"
+  when: not ansible_check_mode
+
+# Get service logs
+- name: Get volume control service logs
+  shell: "journalctl -u volume_control.service -n 20 --no-pager"
+  register: volume_logs
+  become: yes
+  changed_when: false
+  when: not ansible_check_mode
+
+# Display service logs
+- name: Display volume control service logs
+  debug:
+    var: volume_logs.stdout_lines
+  when: not ansible_check_mode
+
+# Display check mode message
+- name: Display check mode message
+  debug:
+    msg: "Check mode enabled. Service would be enabled and started in a real run."
+  when: ansible_check_mode
